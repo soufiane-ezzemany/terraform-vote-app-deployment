@@ -4,8 +4,8 @@ FILA3 Voting App Terraform Project
 # Table of Content
 
   * [Local Docker deployment](#part-1---local-docker-deployment)
-  * [Kubernetes deployment](#part-2---gke-and-kubernetes)
-  * [Offloading Redis from the Cluster](#part-3-optional---gke-kubernetes-and-offloaded-redis)
+  * [Kubernetes deployment](#part-2---kubernetes)
+  * [Offloading Redis from the Cluster](#part-3---proxmox-kubernetes-and-offloaded-redis)
 
 ## Objectives
 
@@ -93,9 +93,6 @@ See [the documentation](https://registry.terraform.io/providers/Telmate/proxmox/
 * Pod for debugging Redis:
   * Start the pod: `kubectl run redis-debug --image redis:alpine`
   * Check the connection: `kubectl exec redis-debug -it -- redis-cli -h redis -pass '{yourpassword}'`
-
-* Start a SSH connection on the GCP VM:
-  * `gcloud compute ssh {VM_NAME}`
 
 
 ## Destroy everything
