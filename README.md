@@ -39,11 +39,13 @@ In this second part, you must write code that deploys the application onto a Kub
 Reuse the configuration that was set in the tutorial.
 Use the given manifests in `k8s-manifests/`.
 
-**IMPORTANT**: There is _a single cluster for everyone_. You must deploy manifest inside _your own_ Kubernetes namespace. It has the same name than your login identifier. See `kubectl get ns`.
+**IMPORTANT**: There is _a single cluster for everyone_. You must deploy manifest inside _your own_ Kubernetes namespace. It has the same name than your login identifier. All your resources _must_ be deployed within your namespace. When using `kubectl get`, the default namespace is `default`, you must have to add `-n e22diant` to view your namespace.
+
+__Install kubenv__, [see kubectx](https://github.com/ahmetb/kubectx)
 
 **TIP**: You can use the `kubernetes_manifest` resource and provide any YAML manifest file directly.
 
-**IMPORTANT**: Make sure to organize your Terraform code well. Attention will be given to your organization (modules, directories, files)
+Make sure to organize your Terraform code well. Attention will be given to your organization (modules, directories, files)
 
 
 ## Part 3 - Proxmox, Kubernetes and offloaded Redis
