@@ -110,6 +110,7 @@ jobs:
         with:
           working_directory: terraform/part1-docker
           soft_fail: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
@@ -118,6 +119,7 @@ jobs:
           framework: terraform
           soft_fail: true
           output_format: cli
+          quiet: true
 
   lint:
     name: Terraform Lint
