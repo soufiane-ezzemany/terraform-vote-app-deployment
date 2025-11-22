@@ -5,17 +5,20 @@
 
 # Redis
 resource "docker_image" "redis" {
-  name = "redis:alpine"
+  name         = "redis:alpine"
+  force_remove = true
 }
 
 # PostgreSQL
 resource "docker_image" "postgres" {
-  name = "postgres:15-alpine"
+  name         = "postgres:15-alpine"
+  force_remove = true
 }
 
 # Vote
 resource "docker_image" "vote" {
-  name = "vote:${local.image_tag}"
+  name         = "vote:${local.image_tag}"
+  force_remove = true
   build {
     context    = "${local.services_path}/vote"
     dockerfile = "Dockerfile"
@@ -25,7 +28,8 @@ resource "docker_image" "vote" {
 
 # Result
 resource "docker_image" "result" {
-  name = "result:${local.image_tag}"
+  name         = "result:${local.image_tag}"
+  force_remove = true
   build {
     context    = "${local.services_path}/result"
     dockerfile = "Dockerfile"
@@ -35,7 +39,8 @@ resource "docker_image" "result" {
 
 # Worker
 resource "docker_image" "worker" {
-  name = "worker:${local.image_tag}"
+  name         = "worker:${local.image_tag}"
+  force_remove = true
   build {
     context    = "${local.services_path}/worker"
     dockerfile = "Dockerfile"
@@ -45,7 +50,8 @@ resource "docker_image" "worker" {
 
 # Nginx (load balancer)
 resource "docker_image" "nginx" {
-  name = "nginx-vote:${local.image_tag}"
+  name         = "nginx-vote:${local.image_tag}"
+  force_remove = true
   build {
     context    = "${local.services_path}/nginx"
     dockerfile = "Dockerfile"
@@ -55,7 +61,8 @@ resource "docker_image" "nginx" {
 
 # Seed
 resource "docker_image" "seed" {
-  name = "seed:${local.image_tag}"
+  name         = "seed:${local.image_tag}"
+  force_remove = true
   build {
     context    = "${local.services_path}/seed-data"
     dockerfile = "Dockerfile"
