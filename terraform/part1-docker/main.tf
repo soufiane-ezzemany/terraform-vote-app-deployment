@@ -76,11 +76,11 @@ resource "docker_container" "redis" {
     name = docker_network.back_tier.name
   }
   healthcheck {
-    test     = ["CMD", "sh", "/healthchecks/redis.sh"]
-    interval = "5s"
+    test     = local.redis_healthcheck.test
+    interval = local.redis_healthcheck.interval
   }
   volumes {
-    host_path      = abspath("${path.cwd}/../../healthchecks")
+    host_path      = local.healthchecks_path
     container_path = "/healthchecks"
   }
 }
@@ -96,15 +96,15 @@ resource "docker_container" "db" {
     "POSTGRES_PASSWORD=${var.postgres_password}"
   ]
   healthcheck {
-    test     = ["CMD", "sh", "/healthchecks/postgres.sh"]
-    interval = "5s"
+    test     = local.postgres_healthcheck.test
+    interval = local.postgres_healthcheck.interval
   }
   volumes {
     volume_name    = docker_volume.db_data.name
     container_path = "/var/lib/postgresql/data"
   }
   volumes {
-    host_path      = abspath("${path.cwd}/../../healthchecks")
+    host_path      = local.healthchecks_path
     container_path = "/healthchecks"
   }
 }
@@ -123,11 +123,11 @@ resource "docker_container" "vote" {
   }
 
   healthcheck {
-    test         = ["CMD", "curl", "-f", "http://localhost:5000"]
-    interval     = "15s"
-    timeout      = "5s"
-    retries      = 2
-    start_period = "5s"
+    test         = local.vote_healthcheck.test
+    interval     = local.vote_healthcheck.interval
+    timeout      = local.vote_healthcheck.timeout
+    retries      = local.vote_healthcheck.retries
+    start_period = local.vote_healthcheck.start_period
   }
 
   depends_on = [
