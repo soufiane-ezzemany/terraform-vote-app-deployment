@@ -31,6 +31,29 @@ jobs:
         with:
           terraform_version: 1.6.0
       
+      - name: Workaround Docker Provider GPG Issue
+        run: |
+          # Create plugin directory
+          mkdir -p $HOME/.terraform.d/plugins/registry.terraform.io/kreuzwerker/docker/3.0.2/linux_amd64
+          
+          # Download provider binary directly
+          wget -q https://github.com/kreuzwerker/terraform-provider-docker/releases/download/v3.0.2/terraform-provider-docker_3.0.2_linux_amd64.zip
+          unzip -o terraform-provider-docker_3.0.2_linux_amd64.zip -d $HOME/.terraform.d/plugins/registry.terraform.io/kreuzwerker/docker/3.0.2/linux_amd64
+          
+          # Configure Terraform to use local mirror for docker provider
+          cat <<EOF > $HOME/.terraformrc
+          provider_installation {
+            filesystem_mirror {
+              path    = "$HOME/.terraform.d/plugins"
+              include = ["registry.terraform.io/kreuzwerker/docker"]
+            }
+            direct {
+              exclude = ["registry.terraform.io/kreuzwerker/docker"]
+            }
+          }
+          EOF
+        working-directory: ${{ matrix.terraform-dir }}
+
       - name: Terraform Format Check
         id: fmt
         run: terraform fmt -check -recursive
