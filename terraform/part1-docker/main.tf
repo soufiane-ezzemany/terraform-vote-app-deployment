@@ -109,38 +109,19 @@ resource "docker_container" "db" {
   }
 }
 
-# Vote Instance 1
-resource "docker_container" "vote1" {
-  name  = "vote1"
+# Vote Instances (x2)
+resource "docker_container" "vote" {
+  count = 2
+  name  = "vote${count.index + 1}"
   image = docker_image.vote.image_id
-  networks_advanced {
-    name = docker_network.front_tier.name
-  }
-  networks_advanced {
-    name = docker_network.back_tier.name
-  }
-  healthcheck {
-    test         = ["CMD", "curl", "-f", "http://localhost:5000"]
-    interval     = "15s"
-    timeout      = "5s"
-    retries      = 2
-    start_period = "5s"
-  }
-  depends_on = [
-    docker_container.redis
-  ]
-}
 
-# Vote Instance 2
-resource "docker_container" "vote2" {
-  name  = "vote2"
-  image = docker_image.vote.image_id
   networks_advanced {
     name = docker_network.front_tier.name
   }
   networks_advanced {
     name = docker_network.back_tier.name
   }
+
   healthcheck {
     test         = ["CMD", "curl", "-f", "http://localhost:5000"]
     interval     = "15s"
@@ -148,6 +129,7 @@ resource "docker_container" "vote2" {
     retries      = 2
     start_period = "5s"
   }
+
   depends_on = [
     docker_container.redis
   ]
@@ -197,8 +179,7 @@ resource "docker_container" "nginx" {
     external = var.nginx_port
   }
   depends_on = [
-    docker_container.vote1,
-    docker_container.vote2
+    docker_container.vote
   ]
 }
 
