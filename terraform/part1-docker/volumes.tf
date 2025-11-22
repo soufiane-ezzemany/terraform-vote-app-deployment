@@ -6,9 +6,4 @@
 # PostgreSQL data volume - stores database files
 resource "docker_volume" "db_data" {
   name = "db-data"
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
-
