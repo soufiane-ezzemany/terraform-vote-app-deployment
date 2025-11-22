@@ -1,63 +1,77 @@
-# Images
+# =============================================================================
+# Docker Images
+# =============================================================================
+# This section defines all Docker images used in the application.
 
+# Redis
 resource "docker_image" "redis" {
   name = "redis:alpine"
 }
 
+# PostgreSQL
 resource "docker_image" "postgres" {
   name = "postgres:15-alpine"
 }
 
+# Vote
 resource "docker_image" "vote" {
-  name = "vote:latest"
+  name = "vote:${local.image_tag}"
   build {
-    context    = abspath("${path.cwd}/../../voting-services/vote")
+    context    = "${local.services_path}/vote"
     dockerfile = "Dockerfile"
     no_cache   = false
   }
 }
 
+# Result
 resource "docker_image" "result" {
-  name = "result:latest"
+  name = "result:${local.image_tag}"
   build {
-    context    = abspath("${path.cwd}/../../voting-services/result")
+    context    = "${local.services_path}/result"
     dockerfile = "Dockerfile"
     no_cache   = false
   }
 }
 
+# Worker
 resource "docker_image" "worker" {
-  name = "worker:latest"
+  name = "worker:${local.image_tag}"
   build {
-    context    = abspath("${path.cwd}/../../voting-services/worker")
+    context    = "${local.services_path}/worker"
     dockerfile = "Dockerfile"
     no_cache   = false
   }
 }
 
+# Nginx (load balancer)
 resource "docker_image" "nginx" {
-  name = "nginx-vote:latest"
+  name = "nginx-vote:${local.image_tag}"
   build {
-    context    = abspath("${path.cwd}/../../voting-services/nginx")
+    context    = "${local.services_path}/nginx"
     dockerfile = "Dockerfile"
     no_cache   = false
   }
 }
 
+# Seed
 resource "docker_image" "seed" {
-  name = "seed:latest"
+  name = "seed:${local.image_tag}"
   build {
-    context    = abspath("${path.cwd}/../../voting-services/seed-data")
+    context    = "${local.services_path}/seed-data"
     dockerfile = "Dockerfile"
     no_cache   = false
   }
 }
 
-# Containers
+# =============================================================================
+# Docker Containers
+# =============================================================================
+# This section defines all running containers for the application.
 
+# Redis
 resource "docker_container" "redis" {
   name  = "redis"
-  image = docker_image.redis.name
+  image = docker_image.redis.image_id
   networks_advanced {
     name = docker_network.back_tier.name
   }
@@ -71,9 +85,10 @@ resource "docker_container" "redis" {
   }
 }
 
+# PostgreSQL Database
 resource "docker_container" "db" {
   name  = "db"
-  image = docker_image.postgres.name
+  image = docker_image.postgres.image_id
   networks_advanced {
     name = docker_network.back_tier.name
   }
@@ -94,9 +109,10 @@ resource "docker_container" "db" {
   }
 }
 
+# Vote Instance 1
 resource "docker_container" "vote1" {
   name  = "vote1"
-  image = docker_image.vote.name
+  image = docker_image.vote.image_id
   networks_advanced {
     name = docker_network.front_tier.name
   }
@@ -115,9 +131,10 @@ resource "docker_container" "vote1" {
   ]
 }
 
+# Vote Instance 2
 resource "docker_container" "vote2" {
   name  = "vote2"
-  image = docker_image.vote.name
+  image = docker_image.vote.image_id
   networks_advanced {
     name = docker_network.front_tier.name
   }
@@ -136,9 +153,10 @@ resource "docker_container" "vote2" {
   ]
 }
 
+# Result
 resource "docker_container" "result" {
   name  = "result"
-  image = docker_image.result.name
+  image = docker_image.result.image_id
   networks_advanced {
     name = docker_network.front_tier.name
   }
@@ -154,9 +172,10 @@ resource "docker_container" "result" {
   ]
 }
 
+# Worker
 resource "docker_container" "worker" {
   name  = "worker"
-  image = docker_image.worker.name
+  image = docker_image.worker.image_id
   networks_advanced {
     name = docker_network.back_tier.name
   }
@@ -166,9 +185,10 @@ resource "docker_container" "worker" {
   ]
 }
 
+# Nginx Load Balancer
 resource "docker_container" "nginx" {
   name  = "nginx"
-  image = docker_image.nginx.name
+  image = docker_image.nginx.image_id
   networks_advanced {
     name = docker_network.front_tier.name
   }
@@ -182,9 +202,10 @@ resource "docker_container" "nginx" {
   ]
 }
 
+# Seed
 resource "docker_container" "seed" {
   name  = "seed"
-  image = docker_image.seed.name
+  image = docker_image.seed.image_id
   networks_advanced {
     name = docker_network.front_tier.name
   }
