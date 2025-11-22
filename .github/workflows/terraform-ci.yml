@@ -12,6 +12,10 @@ on:
       - 'terraform/**'
       - '.github/workflows/terraform-ci.yml'
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   terraform-validate:
     name: Terraform Validation
