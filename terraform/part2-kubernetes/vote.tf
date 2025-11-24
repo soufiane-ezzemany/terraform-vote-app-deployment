@@ -1,23 +1,11 @@
-resource "kubernetes_manifest" "vote_deployment" {
-  manifest = merge(
-    yamldecode(file("${local.manifests_path}/vote-deployment.yaml")),
-    {
-      metadata = merge(
-        yamldecode(file("${local.manifests_path}/vote-deployment.yaml")).metadata,
-        { namespace = var.namespace }
-      )
-    }
-  )
+module "vote_deployment" {
+  source    = "./modules/k8s-manifest"
+  file_path = "${local.manifests_path}/vote-deployment.yaml"
+  namespace = var.namespace
 }
 
-resource "kubernetes_manifest" "vote_service" {
-  manifest = merge(
-    yamldecode(file("${local.manifests_path}/vote-service.yaml")),
-    {
-      metadata = merge(
-        yamldecode(file("${local.manifests_path}/vote-service.yaml")).metadata,
-        { namespace = var.namespace }
-      )
-    }
-  )
+module "vote_service" {
+  source    = "./modules/k8s-manifest"
+  file_path = "${local.manifests_path}/vote-service.yaml"
+  namespace = var.namespace
 }

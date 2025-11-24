@@ -1,23 +1,11 @@
-resource "kubernetes_manifest" "redis_deployment" {
-  manifest = merge(
-    yamldecode(file("${local.manifests_path}/redis-deployment.yaml")),
-    {
-      metadata = merge(
-        yamldecode(file("${local.manifests_path}/redis-deployment.yaml")).metadata,
-        { namespace = var.namespace }
-      )
-    }
-  )
+module "redis_deployment" {
+  source    = "./modules/k8s-manifest"
+  file_path = "${local.manifests_path}/redis-deployment.yaml"
+  namespace = var.namespace
 }
 
-resource "kubernetes_manifest" "redis_service" {
-  manifest = merge(
-    yamldecode(file("${local.manifests_path}/redis-service.yaml")),
-    {
-      metadata = merge(
-        yamldecode(file("${local.manifests_path}/redis-service.yaml")).metadata,
-        { namespace = var.namespace }
-      )
-    }
-  )
+module "redis_service" {
+  source    = "./modules/k8s-manifest"
+  file_path = "${local.manifests_path}/redis-service.yaml"
+  namespace = var.namespace
 }

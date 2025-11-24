@@ -1,11 +1,5 @@
-resource "kubernetes_manifest" "worker_deployment" {
-  manifest = merge(
-    yamldecode(file("${local.manifests_path}/worker-deployment.yaml")),
-    {
-      metadata = merge(
-        yamldecode(file("${local.manifests_path}/worker-deployment.yaml")).metadata,
-        { namespace = var.namespace }
-      )
-    }
-  )
+module "worker_deployment" {
+  source    = "./modules/k8s-manifest"
+  file_path = "${local.manifests_path}/worker-deployment.yaml"
+  namespace = var.namespace
 }
