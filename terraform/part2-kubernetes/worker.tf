@@ -1,0 +1,36 @@
+resource "kubernetes_manifest" "worker_deployment" {
+  manifest = {
+    apiVersion = "apps/v1"
+    kind       = "Deployment"
+    metadata = {
+      name      = "worker-deplt"
+      namespace = var.namespace
+      labels = {
+        app = "worker"
+      }
+    }
+    spec = {
+      replicas = 1
+      selector = {
+        matchLabels = {
+          app = "worker"
+        }
+      }
+      template = {
+        metadata = {
+          labels = {
+            app = "worker"
+          }
+        }
+        spec = {
+          containers = [
+            {
+              name  = "worker-container"
+              image = "eloip13009/voting-fila3:worker"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
