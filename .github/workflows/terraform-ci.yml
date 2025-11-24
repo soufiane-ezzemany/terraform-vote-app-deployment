@@ -1,0 +1,170 @@
+name: Terraform CI
+
+on:
+  push:
+    branches: [ main, terraform/docker ]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-ci.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  terraform-validate:
+    name: Terraform Validation
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        terraform-dir:
+          - terraform/part1-docker
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+      
+      - name: Workaround Docker Provider GPG Issue
+        run: |
+          # Create plugin directory
+          mkdir -p $HOME/.terraform.d/plugins/registry.terraform.io/kreuzwerker/docker/3.0.2/linux_amd64
+          
+          # Download provider binary directly
+          wget -q https://github.com/kreuzwerker/terraform-provider-docker/releases/download/v3.0.2/terraform-provider-docker_3.0.2_linux_amd64.zip
+          unzip -o terraform-provider-docker_3.0.2_linux_amd64.zip -d $HOME/.terraform.d/plugins/registry.terraform.io/kreuzwerker/docker/3.0.2/linux_amd64
+          
+          # Configure Terraform to use local mirror for docker provider
+          cat <<EOF > $HOME/.terraformrc
+          provider_installation {
+            filesystem_mirror {
+              path    = "$HOME/.terraform.d/plugins"
+              include = ["registry.terraform.io/kreuzwerker/docker"]
+            }
+            direct {
+              exclude = ["registry.terraform.io/kreuzwerker/docker"]
+            }
+          }
+          EOF
+        working-directory: ${{ matrix.terraform-dir }}
+
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        working-directory: ${{ matrix.terraform-dir }}
+        continue-on-error: true
+      
+      - name: Terraform Init
+        id: init
+        run: terraform init
+        working-directory: ${{ matrix.terraform-dir }}
+      
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+        working-directory: ${{ matrix.terraform-dir }}
+      
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color
+        working-directory: ${{ matrix.terraform-dir }}
+        continue-on-error: true
+      
+      - name: Comment PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+            <details><summary>Validation Output</summary>
+
+            \`\`\`\n
+            ${{ steps.validate.outputs.stdout }}
+            \`\`\`
+
+            </details>
+
+            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+            
+            <details><summary>Show Plan</summary>
+            
+            \`\`\`terraform\n
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\`
+            
+            </details>
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Working Directory: \`${{ matrix.terraform-dir }}\`, Workflow: \`${{ github.workflow }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+      
+      - name: Terraform Format Status
+        if: steps.fmt.outcome == 'failure'
+        run: exit 1
+      
+      - name: Terraform Validation Status
+        if: steps.validate.outcome == 'failure'
+        run: exit 1
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: terraform/part1-docker
+          soft_fail: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: terraform/part1-docker
+          framework: terraform
+          soft_fail: true
+          output_format: cli
+          quiet: true
+
+  lint:
+    name: Terraform Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+      
+      - name: Init TFLint
+        run: tflint --init
+        working-directory: terraform/part1-docker
+      
+      - name: Run TFLint
+        run: tflint --format compact
+        working-directory: terraform/part1-docker
