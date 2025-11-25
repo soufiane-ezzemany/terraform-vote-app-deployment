@@ -4,5 +4,5 @@ module "seed_job" {
   namespace = var.namespace
 
   # Ensure seed job runs after vote service is ready
-  depends_on = [module.vote_service]
+  depends_on = [module.vote_service, module.vote_deployment]
 }

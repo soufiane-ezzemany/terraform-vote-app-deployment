@@ -9,6 +9,19 @@ spec:
   ttlSecondsAfterFinished: 360  # Supprime le pod 10 minutes après completion
   template:
     spec:
+      # Wait for vote service to be ready before starting
+      initContainers:
+      - name: wait-for-vote
+        image: busybox:1.36
+        command: ['sh', '-c']
+        args:
+        - |
+          echo "Waiting for vote service to be ready..."
+          until wget -q --spider --timeout=2 http://vote:5000/ 2>/dev/null; do
+            echo "Vote service not ready yet, retrying in 5s..."
+            sleep 5
+          done
+          echo "Vote service is ready!" 
       containers:
       # - image: europe-west9-docker.pkg.dev/tuto-terraform-406010/voting-app-repo/seed-data
       # - image: europe-west9-docker.pkg.dev/tuto-terraform-406010/voting-app-repo/seed-data
