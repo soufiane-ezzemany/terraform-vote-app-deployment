@@ -22,6 +22,13 @@ spec:
       # - image: vote
         # imagePullPolicy: Never
         name: vote-container
+        env:
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_PASSWORD
+          value: "redispassword"
         ports:
         - containerPort: 5000
           name: vote-port

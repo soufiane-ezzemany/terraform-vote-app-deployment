@@ -6,6 +6,7 @@ metadata:
   name: seed-job
   namespace: xyz
 spec:
+  ttlSecondsAfterFinished: 360  # Supprime le pod 10 minutes après completion
   template:
     spec:
       containers:
