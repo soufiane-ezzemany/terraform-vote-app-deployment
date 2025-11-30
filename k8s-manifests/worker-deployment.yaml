@@ -22,3 +22,10 @@ spec:
       # - image: worker
         # imagePullPolicy: Never
         name: worker-container
+        env:
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_PASSWORD
+          value: "redispassword"

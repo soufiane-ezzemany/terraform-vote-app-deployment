@@ -10,7 +10,7 @@ This directory contains Terraform configuration for deploying the Voting App to 
 
 ## Architecture
 
-The application is deployed to a specific namespace (`s23ezzem`) and consists of the following components:
+The application is deployed to a specific namespace (`q23legof`) and consists of the following components:
 
 ### Services
 
@@ -58,9 +58,9 @@ After deployment, Terraform will output the direct URLs to access the applicatio
 
 ```bash
 # Example Output
-namespace = "s23ezzem"
-result_url = "http://10.144.208.102:30335"
-vote_url = "http://10.144.208.102:31892"
+namespace = "q23legof"
+result_url = "http://10.144.208.131:port" #ip for cluster 52, change it to 102 instead of 131 to get 51
+vote_url = "http://10.144.208.131:port" #ip for cluster 52, change it to 102 instead of 131 to get 51
 ```
 
 You can also retrieve these later with:
@@ -81,7 +81,7 @@ terraform destroy
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `namespace` | Kubernetes namespace | `s23ezzem` |
+| `namespace` | Kubernetes namespace | `q23legof` |
 | `kubeconfig_path` | Path to kubeconfig | `./config/kubeconfig` |
 
 ## File Structure
@@ -120,3 +120,16 @@ terraform apply -target=module.seed_job
 
 ### PostgreSQL Pending
 If the PostgreSQL pod is pending, ensure the `emptyDir` patch is correctly applied. The module handles this automatically in `db.tf`.
+
+### Seed Job Error
+If the seed job fails with connection refused, it likely started before the Vote service was ready. It is configured with `depends_on` to mitigate this, but if it happens, simply re-run:
+```bash
+# Set KUBECONFIG
+export KUBECONFIG=./config/kubeconfig
+
+# Destroy Terraform resources
+terraform destroy -auto-approve
+
+# Clean up orphaned pods
+kubectl delete pods --all -n q23legof --ignore-not-found=true
+```

@@ -1,11 +1,11 @@
 variable "namespace" {
-  description = "Kubernetes namespace for the voting application"
+  description = "Kubernetes namespace for the voting app"
   type        = string
-  default     = "s23ezzem"
+  default     = "q23legof"
 }
 
 variable "kubeconfig_path" {
-  description = "Path to the kubeconfig file"
+  description = "Path to kubeconfig file"
   type        = string
   default     = "./config/kubeconfig"
 }
