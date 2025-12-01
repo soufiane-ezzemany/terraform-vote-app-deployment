@@ -1,0 +1,5 @@
+vm_name         = "vm-s23ezzem"
+vm_ip           = "10.144.208.105"
+ssh_key_path    = "Users/soufiane/.ssh/id_rsa.pub"
+ciuser          = "s23ezzem"
+connection_user = "s23ezzem"
