@@ -103,12 +103,23 @@ This part deploys the stateless services (Vote, Result, Worker) on a Kubernetes 
     cd ../part2-kubernetes
     ```
 
-2.  **Configure Redis Endpoint**:
-    Ensure the Kubernetes manifests point to your Redis VM.
-    *   Check `k8s-manifests/redis-endpoints.yaml` and update the IP address to match your Proxmox VM IP created in Step 1.
-    *   Alternatively, if you are using Terraform variables to inject the IP, ensure they are set correctly.
+2.  **Configure Kubeconfig**:
+    Place your Kubernetes configuration file in the `config/` directory:
+    ```bash
+    cp /path/to/your/kubeconfig config/kubeconfig
+    ```
 
-3.  Initialize and Apply:
+3.  **Configure Variables**:
+    Copy the example variable file and update it with your settings:
+    ```bash
+    cp terraform.tfvars.example terraform.tfvars
+    ```
+    Open `terraform.tfvars` and configure:
+    *   `namespace`: Your Kubernetes namespace (e.g., `s23ezzem`)
+    *   `node_ip`: The IP address of your Kubernetes node for accessing services
+    *   `redis_vm_ip`: The IP address of your Redis VM from Step 1
+
+4.  Initialize and Apply:
     ```bash
     terraform init
     terraform apply
@@ -116,11 +127,18 @@ This part deploys the stateless services (Vote, Result, Worker) on a Kubernetes 
 
 ### Accessing the Application
 
--   Get the NodePort or LoadBalancer IP from the output or by running:
-    ```bash
-    kubectl get svc -n <your-namespace>
-    ```
--   Access the Voting App via the cluster node IP and the assigned NodePort.
+After deployment, Terraform will output the direct URLs:
+-   **Voting App**: Use the `vote_url` from the output
+-   **Result App**: Use the `result_url` from the output
+
+Example output:
+```
+Outputs:
+
+namespace = "s23ezzem"
+result_url = "http://10.144.208.102:32388"
+vote_url = "http://10.144.208.102:31146"
+```
 
 ### Cleanup
 
