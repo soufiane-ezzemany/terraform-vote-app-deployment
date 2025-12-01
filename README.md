@@ -4,15 +4,13 @@ This repository contains the Terraform code to deploy a Voting Application using
 1.  **Local Docker Deployment**: Deploys the full stack (Vote, Result, Worker, Redis, Postgres) locally using the Docker provider.
 2.  **Kubernetes + Proxmox Deployment**: Deploys the application services on a Kubernetes cluster and offloads the Redis database to a VM on Proxmox.
 
----## Prerequisites
+## Prerequisites
 
 Ensure you have the following tools installed and configured:
 -   [Terraform](https://developer.hashicorp.com/terraform/downloads) (>= 1.0)
 -   [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine)
 -   [kubectl](https://kubernetes.io/docs/tasks/tools/)
 -   Access to the Proxmox cluster and Kubernetes cluster (VPN if required).
-
----
 
 ## Part 1: Local Docker Deployment
 
