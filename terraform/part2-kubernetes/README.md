@@ -1,135 +1,78 @@
-# Part 2: Kubernetes Deployment with Terraform
+# Kubernetes Deployment
 
-This directory contains Terraform configuration for deploying the Voting App to a Kubernetes cluster. It uses a **Module-Based Architecture** to dynamically ingest existing YAML manifests, ensuring a clean and maintainable codebase.
+This directory contains Terraform configuration to deploy the voting application on Kubernetes.
 
 ## Prerequisites
 
-- **Terraform** >= 1.0
-- **Kubectl** configured with access to the cluster
-- **Kubeconfig** file located at `./config/kubeconfig` (or configured via environment)
+- Access to a Kubernetes cluster
+- Kubeconfig file for cluster authentication
+- Redis VM already provisioned (see `terraform/proxmox` directory)
 
-## Architecture
+## Deployment Steps
 
-The application is deployed to a specific namespace (`q23legof`) and consists of the following components:
+1.  **Configure Kubeconfig**:
+    Place your Kubernetes configuration file in the `config/` directory:
+    ```bash
+    cp /path/to/your/kubeconfig config/kubeconfig
+    ```
 
-### Services
+2.  **Configure Variables**:
+    Copy the example variable file and update it with your settings:
+    ```bash
+    cp terraform.tfvars.example terraform.tfvars
+    ```
+    Open `terraform.tfvars` and configure:
+    *   `namespace`: Your Kubernetes namespace (e.g., `s23ezzem`)
+    *   `node_ip`: The IP address of your Kubernetes node for accessing services
+    *   `redis_vm_ip`: The IP address of your Redis VM from the Proxmox deployment
 
-| Service | Description | Type | Port |
-|---------|-------------|------|------|
-| **vote** | Voting interface | NodePort | 31000+ |
-| **result** | Results display | NodePort | 31000+ |
-| **redis** | In-memory data store | NodePort | 6379 |
-| **db** | PostgreSQL database | ClusterIP | 5432 |
-| **worker** | Background processor | Deployment | - |
-| **seed-job** | Data seeder | Job | - |
+3.  Initialize and Apply:
+    ```bash
+    terraform init
+    terraform apply -auto-approve
+    ```
 
-### Module Architecture
+## Accessing the Application
 
-This project uses a custom local module `modules/k8s-manifest` to:
-1.  **Read** standard Kubernetes YAML manifests from `../../k8s-manifests/`.
-2.  **Decode** the YAML into Terraform objects.
-3.  **Inject** the target namespace dynamically.
-4.  **Patch** specific resources (e.g., PostgreSQL storage) on the fly.
+After deployment, Terraform will output the direct URLs:
+-   **Voting App**: Use the `vote_url` from the output
+-   **Result App**: Use the `result_url` from the output
 
-## Usage
+Example output:
+```
+Outputs:
 
-### Initialize Terraform
-
-```bash
-cd terraform/part2-kubernetes
-terraform init
+namespace = "s23ezzem"
+result_url = "http://10.144.208.102:32388"
+vote_url = "http://10.144.208.102:31146"
 ```
 
-### Preview Changes
+## Cleanup
 
-```bash
-terraform plan
-```
-
-### Deploy
-
-```bash
-terraform apply
-```
-
-### Access the Application
-
-After deployment, Terraform will output the direct URLs to access the application:
-
-```bash
-# Example Output
-namespace = "q23legof"
-result_url = "http://10.144.208.131:port" #ip for cluster 52, change it to 102 instead of 131 to get 51
-vote_url = "http://10.144.208.131:port" #ip for cluster 52, change it to 102 instead of 131 to get 51
-```
-
-You can also retrieve these later with:
-
-```bash
-terraform output
-```
-
-### Destroy
-
+To remove all Kubernetes resources:
 ```bash
 terraform destroy
 ```
 
-## Configuration
+## Architecture
 
-### Variables
+### External Redis Service
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `namespace` | Kubernetes namespace | `q23legof` |
-| `kubeconfig_path` | Path to kubeconfig | `./config/kubeconfig` |
+The application connects to an external Redis instance running on a Proxmox VM. This is achieved using:
+- **Kubernetes Service (without selector)**: Defines the service endpoint named `redis`
+- **Kubernetes Endpoints**: Manually maps the service to the external VM IP address
 
-## File Structure
+Application pods connect to Redis using the standard DNS name `redis:6379`, which Kubernetes resolves to the external VM.
 
-```
-terraform/part2-kubernetes/
-├── apps.tf          # Application components (Vote, Result, Worker, Seed)
-├── db.tf            # Database components (Redis, PostgreSQL)
-├── locals.tf        # Shared configuration (manifest paths)
-├── moves.tf         # State migration (Zero-Downtime)
-├── outputs.tf       # Access URLs
-├── provider.tf      # Kubernetes provider config
-├── variables.tf     # Input variables
-├── modules/
-│   └── k8s-manifest/ # Reusable manifest ingestion module
-└── config/
-    └── kubeconfig   # Cluster credentials
-```
+### Module Structure
 
-## Best Practices Implemented
+- **`modules/k8s-manifest`**: Reusable module for deploying Kubernetes manifests with namespace injection
+- **`applications.tf`**: All application deployments consolidated in one file for easy maintenance
 
-✅ **Module-Based Architecture**: Reusable logic for manifest handling  
-✅ **Infrastructure as Data**: Reads directly from upstream YAML files  
-✅ **Zero Repetition**: DRY principle applied via modules  
-✅ **Zero Downtime**: State migration using `moved` blocks  
-✅ **Dynamic Patching**: On-the-fly modification of manifests (e.g., PVC replacement)  
-✅ **Namespace Isolation**: All resources confined to user namespace  
+## Variables
 
-## Troubleshooting
-
-### Connection Refused (Seed Job)
-If the seed job fails with connection refused, it likely started before the Vote service was ready. It is configured with `depends_on` to mitigate this, but if it happens, simply re-run:
-```bash
-terraform apply -target=module.seed_job
-```
-
-### PostgreSQL Pending
-If the PostgreSQL pod is pending, ensure the `emptyDir` patch is correctly applied. The module handles this automatically in `db.tf`.
-
-### Seed Job Error
-If the seed job fails with connection refused, it likely started before the Vote service was ready. It is configured with `depends_on` to mitigate this, but if it happens, simply re-run:
-```bash
-# Set KUBECONFIG
-export KUBECONFIG=./config/kubeconfig
-
-# Destroy Terraform resources
-terraform destroy -auto-approve
-
-# Clean up orphaned pods
-kubectl delete pods --all -n q23legof --ignore-not-found=true
-```
+Key variables:
+- `namespace`: Kubernetes namespace for resources
+- `node_ip`: IP address of Kubernetes node (for accessing NodePort services)
+- `redis_vm_ip`: IP address of the external Redis VM
+- `kubeconfig_path`: Path to kubeconfig file (default: `./config/kubeconfig`)
