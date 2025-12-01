@@ -1,0 +1,8 @@
+# Kubernetes Configuration
+namespace = "your-namespace"
+
+# Kubernetes Cluster Configuration
+node_ip = "10.x.x.x"
+
+# Redis VM Configuration
+redis_vm_ip = "10.x.x.x"
