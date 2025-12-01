@@ -1,3 +1,15 @@
+variable "pm_api_url" {
+  description = "Proxmox API URL"
+  type        = string
+  default     = "https://10.144.208.51:8006/api2/json"
+}
+
+variable "target_node" {
+  description = "Proxmox node to deploy to"
+  type        = string
+  default     = "dapi-na-cours-pve-02"
+}
+
 variable "vm_name" {
   description = "Name of the VM"
   type        = string
@@ -26,5 +38,17 @@ variable "connection_user" {
   description = "User for SSH connection"
   type        = string
   default     = "s23ezzem"
+}
+
+variable "network_config" {
+  description = "Network configuration (gateway, nameserver)"
+  type = object({
+    gateway    = string
+    nameserver = string
+  })
+  default = {
+    gateway    = "10.144.208.1"
+    nameserver = "10.44.10.98"
+  }
 }
 
