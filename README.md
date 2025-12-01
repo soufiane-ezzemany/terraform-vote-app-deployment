@@ -1,133 +1,147 @@
-FILA3 Voting App Terraform Project
-===================================
+# Cloud Project: Voting App Deployment
 
-# Table of Content
+This repository contains the Terraform code to deploy a Voting Application using two different methods:
+1.  **Local Docker Deployment**: Deploys the full stack (Vote, Result, Worker, Redis, Postgres) locally using the Docker provider.
+2.  **Kubernetes + Proxmox Deployment**: Deploys the application services on a Kubernetes cluster and offloads the Redis database to a VM on Proxmox.
 
-  * [Local Docker deployment](#part-1---local-docker-deployment)
-  * [Kubernetes deployment](#part-2---kubernetes)
-  * [Offloading Redis from the Cluster](#part-3---proxmox-kubernetes-and-offloaded-redis)
+## Prerequisites
 
-## Objectives
+Ensure you have the following tools installed and configured:
+-   [Terraform](https://developer.hashicorp.com/terraform/downloads) (>= 1.0)
+-   [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine)
+-   [kubectl](https://kubernetes.io/docs/tasks/tools/)
+-   Access to the Proxmox cluster and Kubernetes cluster (VPN if required).
 
-The objective is to use _only_ Terraform to deploy the entirety of the voting app.
+---
 
-The tutorial on Terraform did not give you _all_ elements for this project: this was on purpose.
-The point is for you to learn how to seek information in providers and other documentations.
-But most elements in the tutorials can be directly applied.
+## Part 1: Local Docker Deployment
 
-Different levels are possible, the more advancement you make the better.
-<!-- **Part 1 and Part 2 are mandatory.** -->
+This part deploys the entire application stack on your local machine using Docker containers.
 
+### Deployment Steps
 
-## Part 1 - Local Docker deployment
+1.  Navigate to the Docker Terraform directory:
+    ```bash
+    cd terraform/part1-docker
+    ```
 
-![voting-app-docker](figures/login-nuage-voting.drawio.svg)
+2.  Initialize Terraform:
+    ```bash
+    terraform init
+    ```
 
-In this first part, you must write Terraform code that deploys the application with the Docker provider.
-The app will thus be deployed locally inside containers on your machine.
-Use the given `docker-compose.yml` as a reference configuration.
+3.  Review the deployment plan:
+    ```bash
+    terraform plan
+    ```
 
-**TIP**: Recall that a Docker Compose "service" creates a DNS records accessible by other containers.
-Terraform does not do that, so you will need to add the relevant `host` configurations.
+4.  Apply the configuration:
+    ```bash
+    terraform apply -auto-approve
+    ```
 
+### Accessing the Application
 
-## Part 2 - Kubernetes
+Once deployed, you can access the services locally:
+-   **Voting App**: [http://localhost:8000](http://localhost:8000)
+-   **Result App**: [http://localhost:5050](http://localhost:5050)
 
-![voting-app-k8s](figures/login-nuage-voting-k8s.drawio.svg)
+### Cleanup
 
-In this second part, you must write code that deploys the application onto a Kubernetes cluster.
-Reuse the configuration that was set in the tutorial.
-Use the given manifests in `k8s-manifests/`.
-
-**IMPORTANT**: There is _a single cluster for everyone_. You must deploy manifest inside _your own_ Kubernetes namespace. It has the same name than your login identifier. All your resources _must_ be deployed within your namespace. When using `kubectl get`, the default namespace is `default`, you must have to add `-n e22diant` to view your namespace.
-
-__Install kubenv__, [see kubectx](https://github.com/ahmetb/kubectx)
-
-**TIP**: You can use the `kubernetes_manifest` resource and provide any YAML manifest file directly.
-
-Make sure to organize your Terraform code well. Attention will be given to your organization (modules, directories, files)
-
-
-## Part 3 - Proxmox, Kubernetes and offloaded database
-
-In this last part, the objective is to deploy with Terraform the Redis database inside a Proxmox VM rather than on the cluster.
-
-### Kubernetes manifests update
-
-The database must be available to the other components of the application located on the cluster.
-You will have to update the Kubernetes manifests, notably, the previous Redis `service` must be changed to a "headless" service.
-
-**TIP**: *vote* and *worker* need to be aware of the Redis host IP and password.
-
-<!-- When deploying into the cluster, _do not_ deploy the seed job to avoit overloading the underlying VM. -->
-
-### Proxmox setup
-
-The main endpoint to the Proxmox server is `10.144.208.51:8006` accessible with your browser.
-You can connect with the provided login and password. The realm is `Proxmox VE authentication server`.
-
-Then, create an API token for Terraform: "Datacenter" > "Permissions" > "API Tokens" > "Add".
-The token ID is irrelevant, chose something meaningful like "terraform-token".
-Make sure to _uncheck_ `Privilege Separation`.
-Save the token credentials safely in your machine, then export environment variables
-
-```
-export PM_API_TOKEN_ID='e23diant@pve!terraform-token'
-export PM_API_TOKEN_SECRET='FIXME'
+To remove all created containers and networks:
+```bash
+terraform destroy
 ```
 
-Try to `plan` inside `terraform/proxmox/pve_vm.tf`.
+---
 
-### VM deployment
+## Part 3: Kubernetes + Redis on Proxmox
 
-You will use the `vm_qemu` resource of the Telmate provider to deploy your VM.
-See [the documentation](https://registry.terraform.io/providers/Telmate/proxmox/latest/docs/resources/vm_qemu)
+This part deploys the stateless services (Vote, Result, Worker) on a Kubernetes cluster and automatically provisions the stateful Redis database on a dedicated Proxmox VM.
 
-The script to deploy a clone of the Debian template VM is located in `terraform/proxmox/pve_vm.tf`.
-Update the `FIXME`s with your informations ; deploy with `apply` and check the dashboard.
+### Step 1: Provisioning the Redis VM on Proxmox
 
-When booting, the VM will use some CPU and it is normal. But if the VM uses 100% CPU after ~45s of uptime, consider stopping and restarting the VM.
+**Note on VM Freeze Issue**: The Terraform configuration includes an automated reboot step to handle a known issue where the VM freezes (100% CPU) on first boot. This requires Proxmox API access.
 
-If everything seem okay, try to connect to the VM with SSH.
+1.  Navigate to the Proxmox Terraform directory:
+    ```bash
+    cd terraform/proxmox
+    ```
 
-### Manual Redis installation and Kubernetes connection
+2.  **Configure Credentials (CRITICAL)**:
+    You **MUST** export your Proxmox API credentials as environment variables. These are used by Terraform to perform the automated reboot and unfreeze the VM.
+    ```bash
+    export PM_API_TOKEN_ID='your-token-id'
+    export PM_API_TOKEN_SECRET='your-token-secret'
+    ```
 
-To install Redis upon startup of the VM, there is a given `install-redis.sh.tftpl` template script that must be instantiated with a password and executed inside the VM.
+3.  **Configure Variables**:
+    Copy the example variable file and update it with your settings:
+    ```bash
+    cp terraform.tfvars.example terraform.tfvars
+    ```
+    Open `terraform.tfvars` and ensure the `vm_ip`, `ssh_key_path`, and user details are correct for your setup.
+    *   `vm_ip`: The IP address for your Redis VM (e.g., `10.144.208.105`).
+    *   `ssh_key_path`: Path to your public SSH key.
 
-At first, add your password manually in the script, and execute it directly in the VM.
+4.  Initialize and Apply:
+    ```bash
+    terraform init
+    terraform apply
+    ```
+    **What happens**:
+    -   Terraform creates the VM.
+    -   It automatically stops and starts the VM (reboot) to fix the CPU freeze.
+    -   It connects via SSH to install and configure Redis.
 
-Deploy the application ; debug ; repeat, until it works.
+5.  **Note the VM IP**: You will need the Redis VM's IP address for the Kubernetes deployment.
 
-### Automatic installation
+### Step 2: Deploying Application to Kubernetes
 
-We would like to use Terraform as a source of truth for our whole infrastructure and application.
-There are multiple solutions to install Redis in the VM:
+1.  Navigate to the Kubernetes Terraform directory:
+    ```bash
+    cd ../part2-kubernetes
+    ```
 
-* Use a [Terraform _provisioner_](https://developer.hashicorp.com/terraform/language/provisioners)
-* Use Ansible and then a Terraform `null-resource` to run your playbook.
-* Use _cloud-init_ directly with the Proxmox VM resource.
+2.  **Configure Redis Endpoint**:
+    Ensure the Kubernetes manifests point to your Redis VM.
+    *   Check `k8s-manifests/redis-endpoints.yaml` and update the IP address to match your Proxmox VM IP created in Step 1.
+    *   Alternatively, if you are using Terraform variables to inject the IP, ensure they are set correctly.
 
+3.  Initialize and Apply:
+    ```bash
+    terraform init
+    terraform apply
+    ```
 
-### Optional - Automatic PostgreSQL offloading
+### Accessing the Application
 
-The idea here is similar to previously.
-In addition to offloading Redis, we would like to move the PostgreSQL database in a Proxmox VM.
+-   Get the NodePort or LoadBalancer IP from the output or by running:
+    ```bash
+    kubectl get svc -n <your-namespace>
+    ```
+-   Access the Voting App via the cluster node IP and the assigned NodePort.
 
+### Cleanup
 
-## Kubernetes Debugging tips
+1.  **Destroy Kubernetes Resources**:
+    ```bash
+    cd terraform/part2-kubernetes
+    terraform destroy
+    ```
 
-* Ping from inside a Deployment's pod:
-  * Launch bash on a pod, e.g.: `kubectl exec deployments/vote-deplt -it -- bash` then
-  * Install the `ping` command: `apt update; apt install iputils-ping`
-  * Check connectivity: `ping redis -p 6379`
+2.  **Destroy Proxmox VM**:
+    ```bash
+    cd ../proxmox
+    terraform destroy
+    ```
 
-* Pod for debugging networking: https://hub.docker.com/r/rtsp/net-tools
-  * Start the pod: `kubectl run net-debug --image rtsp/net-tools`, then
-  * Launch an interactive bash session: `kubectl exec net-debug -it -- bash` or
-  * Launch a single command, e.g.: `kubectl exec net-debug -- nslookup redis`
+---
 
-* Pod for debugging Redis:
-  * Start the pod: `kubectl run redis-debug --image redis:alpine`
-  * Check the connection: `kubectl exec redis-debug -it -- redis-cli -h redis -pass '{yourpassword}'`
+## Project Structure
 
-
+-   `terraform/part1-docker`: Terraform code for local Docker deployment.
+-   `terraform/part2-kubernetes`: Terraform code for Kubernetes deployment.
+-   `terraform/proxmox`: Terraform code for Proxmox VM provisioning.
+-   `k8s-manifests`: Kubernetes YAML manifests used by Part 2.
+-   `voting-services`: Source code for the application services.

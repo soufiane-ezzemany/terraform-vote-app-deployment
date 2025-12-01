@@ -9,22 +9,17 @@ terraform {
 }
 
 provider "proxmox" {
-  pm_api_url      = "https://10.144.208.51:8006/api2/json"
+  pm_api_url      = var.pm_api_url
   pm_tls_insecure = true
 }
 
-variable "network_config" {
-  default = {
-    gateway    = "10.144.208.1"
-    nameserver = "10.44.10.98"
-  }
-}
+
 
 resource "proxmox_vm_qemu" "redis_vm" {
 
   name        = "vm-s23ezzem"
   vmid        = split(".", var.vm_ip)[3]
-  target_node = "dapi-na-cours-pve-02"
+  target_node = var.target_node
   clone       = "template-debian"
   tags        = "fila3"
 
@@ -73,5 +68,65 @@ resource "proxmox_vm_qemu" "redis_vm" {
     }
   }
 
+}
+
+resource "null_resource" "reboot_vm" {
+  depends_on = [proxmox_vm_qemu.redis_vm]
+
+  provisioner "local-exec" {
+    command = <<EOT
+      
+      # Wait for boot
+      sleep 30
+
+      # Stop the VM
+      curl -k -X POST -H "Authorization: PVEAPIToken=$PM_API_TOKEN_ID=$PM_API_TOKEN_SECRET" \
+        ${var.pm_api_url}/nodes/${var.target_node}/qemu/${split(".", var.vm_ip)[3]}/status/stop
+
+      # Wait for shutdown
+      sleep 20
+
+      # Start the VM
+      curl -k -X POST -H "Authorization: PVEAPIToken=$PM_API_TOKEN_ID=$PM_API_TOKEN_SECRET" \
+        ${var.pm_api_url}/nodes/${var.target_node}/qemu/${split(".", var.vm_ip)[3]}/status/start
+
+      # Wait for boot
+      sleep 30
+    EOT
+  }
+}
+
+resource "null_resource" "provision_redis" {
+  depends_on = [null_resource.reboot_vm]
+
+  # Upload Redis installation script
+  provisioner "file" {
+    content = templatefile("${path.module}/../../templates/install-redis.sh.tftpl", {
+      password = "redispassword"
+    })
+    destination = "/tmp/install-redis.sh"
+
+    connection {
+      type        = "ssh"
+      user        = var.connection_user
+      private_key = file("${replace(var.ssh_key_path, ".pub", "")}")
+      host        = var.vm_ip
+    }
+  }
+
+  # Execute Redis installation script
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/install-redis.sh",
+      "sudo /tmp/install-redis.sh"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = var.connection_user
+      private_key = file("${replace(var.ssh_key_path, ".pub", "")}")
+      host        = var.vm_ip
+    }
+  }
 }
 

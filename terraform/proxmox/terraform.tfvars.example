@@ -1,0 +1,8 @@
+# VM Configuration
+vm_name      = "vm-name"
+vm_ip        = "10.x.x.x"
+ssh_key_path = "/path/to/public/key.pub"
+
+# User Configuration
+ciuser          = "cloud-init-user"
+connection_user = "ssh-connection-user"
