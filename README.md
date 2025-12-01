@@ -4,7 +4,7 @@ This repository contains the Terraform code to deploy a Voting Application using
 1.  **Local Docker Deployment**: Deploys the full stack (Vote, Result, Worker, Redis, Postgres) locally using the Docker provider.
 2.  **Kubernetes + Proxmox Deployment**: Deploys the application services on a Kubernetes cluster and offloads the Redis database to a VM on Proxmox.
 
-## Prerequisites
+---## Prerequisites
 
 Ensure you have the following tools installed and configured:
 -   [Terraform](https://developer.hashicorp.com/terraform/downloads) (>= 1.0)
@@ -87,7 +87,7 @@ This part deploys the stateless services (Vote, Result, Worker) on a Kubernetes 
 4.  Initialize and Apply:
     ```bash
     terraform init
-    terraform apply
+    terraform apply -auto-approve
     ```
     **What happens**:
     -   Terraform creates the VM.
@@ -122,7 +122,7 @@ This part deploys the stateless services (Vote, Result, Worker) on a Kubernetes 
 4.  Initialize and Apply:
     ```bash
     terraform init
-    terraform apply
+    terraform apply -auto-approve
     ```
 
 ### Accessing the Application
@@ -163,3 +163,52 @@ vote_url = "http://10.144.208.102:31146"
 -   `terraform/proxmox`: Terraform code for Proxmox VM provisioning.
 -   `k8s-manifests`: Kubernetes YAML manifests used by Part 2.
 -   `voting-services`: Source code for the application services.
+
+---
+
+## Technical Choices and Design Decisions
+
+### Infrastructure Architecture
+
+**Why Redis on a Separate VM?**
+- **Separation of Concerns**: Stateful services (databases) are isolated from stateless application services
+- **Performance**: Dedicated VM resources ensure consistent Redis performance without competing with application pods
+- **Data Persistence**: VM-based storage provides more reliable data persistence than ephemeral Kubernetes volumes
+- **Scalability**: Independent scaling of the database tier without affecting application deployments
+
+**External Service Pattern (Redis Endpoints)**
+- We use Kubernetes `Service` without a selector + manual `Endpoints` to treat the external VM as an internal service
+- This allows application pods to connect to Redis using standard Kubernetes DNS (`redis:6379`)
+- The Redis IP is dynamically injected via Terraform variables for easy configuration
+
+### Terraform Best Practices
+
+**Variable Management**
+- All environment-specific values (IPs, namespaces, node names) are externalized as variables
+- `terraform.tfvars.example` files provide templates for easy setup
+- Default values are provided for non-sensitive configuration to simplify development
+- Critical values (API tokens) are managed via environment variables for security
+
+**Module Organization**
+- **Reusable `k8s-manifest` module**: Abstracts Kubernetes manifest deployment with namespace injection
+- **Consolidated `applications.tf`**: All application deployments in one file for easy maintenance
+- **Separation of infrastructure files**: `provider.tf`, `variables.tf`, `outputs.tf` remain separate for clarity
+
+**VM Freeze Automation**
+- **Problem**: Proxmox VMs freeze (100% CPU) on first boot, requiring manual intervention
+- **Solution**: Automated reboot using Proxmox API (`null_resource` with `local-exec`)
+  - Terraform creates the VM
+  - Automatically stops and starts it via API to unfreeze
+  - Then provisions Redis via SSH
+- **Why this approach?**: Eliminates manual steps, makes deployment fully automated
+
+### Continuous Integration (CI)
+
+**Added CI for:**
+- **Code Quality**: Automated Terraform validation (`terraform fmt`, `terraform validate`) ensures code consistency
+- **Early Error Detection**: Catches syntax errors and configuration issues before deployment
+
+**CI Implementation**
+- Pre-commit hooks or GitHub Actions validate Terraform syntax
+- Automated checks run on every pull request
+- Prevents broken configurations from being merged to main branch
